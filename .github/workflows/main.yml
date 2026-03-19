@@ -25,6 +25,18 @@ jobs:
           # Rename the target output
           sed -i 's/TARGET		:=	$(notdir $(CURDIR))/TARGET := dsi_video_app/' Makefile || true
 
+      - name: Auto-fix camera header
+        run: |
+          # Find which header declares cameraInit
+          HEADER=$(grep -rl "cameraInit" /opt/devkitpro/libnds/include/ | grep "\.h$" | head -n 1)
+          if [ -n "$HEADER" ]; then
+            REL_PATH=$(echo "$HEADER" | sed 's|/opt/devkitpro/libnds/include/||')
+            echo "Found cameraInit in: $REL_PATH"
+            sed -i "s|nds/arm9/camera.h|$REL_PATH|g" source/main.c
+          else
+            echo "cameraInit not found in any standard header!"
+          fi
+
       - name: Compile
         run: make
 
