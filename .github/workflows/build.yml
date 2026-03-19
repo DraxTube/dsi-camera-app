@@ -5,36 +5,34 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:          # permette avvio manuale dalla UI di GitHub
+  workflow_dispatch:
 
 jobs:
   build:
     name: Compila con devkitPro
     runs-on: ubuntu-latest
 
-    container:
-      # Immagine ufficiale devkitPro con tutto il toolchain ARM già installato
-      image: devkitpro/devkitarm:latest
-
     steps:
       # 1. Checkout del codice
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Mostra versione toolchain (utile per debug)
-      - name: Info toolchain
+      # 2. Installa devkitPro e nds-dev
+      - name: Installa devkitPro
         run: |
-          arm-none-eabi-gcc --version
-          echo "DEVKITPRO=$DEVKITPRO"
-          echo "DEVKITARM=$DEVKITARM"
+          wget https://apt.devkitpro.org/install-devkitpro-pacman
+          chmod +x ./install-devkitpro-pacman
+          sudo ./install-devkitpro-pacman
+          sudo dkp-pacman -Sy --noconfirm nds-dev
 
       # 3. Compila
       - name: make
-        run: make
-        env:
-          DEVKITPRO: /opt/devkitpro
-          DEVKITARM: /opt/devkitpro/devkitARM
-          PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:$PATH
+        run: |
+          export DEVKITPRO=/opt/devkitpro
+          export DEVKITARM=/opt/devkitpro/devkitARM
+          export PATH=$DEVKITARM/bin:$DEVKITPRO/tools/bin:$PATH
+          arm-none-eabi-gcc --version
+          make
 
       # 4. Carica il .nds come artifact scaricabile da GitHub
       - name: Upload .nds
@@ -44,7 +42,7 @@ jobs:
           path: dsi-video-cam.nds
           if-no-files-found: error
 
-      # 5. (Opzionale) Crea una Release automatica quando pushy un tag vX.Y.Z
+      # 5. Crea Release automatica quando pushy un tag vX.Y.Z
       - name: Crea Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
