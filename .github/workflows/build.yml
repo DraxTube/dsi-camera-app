@@ -13,20 +13,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del codice
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Installa devkitPro e nds-dev
+      # Installa devkitPro tramite repository APT ufficiale
       - name: Installa devkitPro
         run: |
-          wget https://apt.devkitpro.org/install-devkitpro-pacman
-          chmod +x ./install-devkitpro-pacman
-          sudo ./install-devkitpro-pacman
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget https://apt.devkitpro.org/devkitpro-pacman.amd64.deb
+          sudo apt install -y ./devkitpro-pacman.amd64.deb
           sudo dkp-pacman -Sy --noconfirm nds-dev
 
-      # 3. Compila
-      - name: make
+      - name: Compila
         run: |
           export DEVKITPRO=/opt/devkitpro
           export DEVKITARM=/opt/devkitpro/devkitARM
@@ -34,7 +33,6 @@ jobs:
           arm-none-eabi-gcc --version
           make
 
-      # 4. Carica il .nds come artifact scaricabile da GitHub
       - name: Upload .nds
         uses: actions/upload-artifact@v4
         with:
@@ -42,7 +40,6 @@ jobs:
           path: dsi-video-cam.nds
           if-no-files-found: error
 
-      # 5. Crea Release automatica quando pushy un tag vX.Y.Z
       - name: Crea Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
