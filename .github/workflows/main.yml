@@ -1,5 +1,7 @@
 name: Build Nintendo DSi App
+
 on: [push, pull_request, workflow_dispatch]
+
 jobs:
   build:
     name: Build via devkitARM
@@ -13,19 +15,54 @@ jobs:
       - name: Fetch Camera Template
         run: |
           git clone https://github.com/Epicpkmn11/dsi-camera.git base_project
-          # Overwrite their template's main.c with our video recorder app
+
+          # FIX 1: il file da sovrascrivere è arm9/source/main.c,
+          # ma prima verifichiamo che la struttura del repo upstream
+          # non sia cambiata (protezione contro breaking changes).
+          if [ ! -f base_project/arm9/source/main.c ]; then
+            echo "ERROR: Expected arm9/source/main.c not found in upstream repo."
+            echo "Inspect the repo structure and update the cp path accordingly."
+            exit 1
+          fi
+
           cp source/main.c base_project/arm9/source/main.c
 
       - name: Compile
+        working-directory: base_project
         run: |
-          cd base_project
-          make
-          cp dsi-camera.nds ../dsi_video_app.nds
+          # FIX 2: make restituisce exit-code non-zero se la build fallisce;
+          # con 'set -e' (default in GitHub Actions) il job si ferma subito.
+          # Aggiungiamo -j$(nproc) per parallelizzare la compilazione.
+          make -j$(nproc)
+
+      - name: Copy output
+        run: |
+          # FIX 3: il nome del file .nds prodotto da Epicpkmn11/dsi-camera
+          # è definito nel Makefile del progetto base; usiamo un glob
+          # robusto invece di un nome fisso, così funziona anche se
+          # l'upstream cambia il TARGET nel Makefile.
+          NDS_FILE=$(find base_project -maxdepth 1 -name "*.nds" | head -n 1)
+          if [ -z "$NDS_FILE" ]; then
+            echo "ERROR: No .nds file found after build."
+            exit 1
+          fi
+          cp "$NDS_FILE" dsi_video_app.nds
+          echo "Copied $NDS_FILE → dsi_video_app.nds"
+
+          # Copia anche l'eventuale .ndsi (non sempre presente)
+          NDSI_FILE=$(find base_project -maxdepth 1 -name "*.ndsi" | head -n 1)
+          if [ -n "$NDSI_FILE" ]; then
+            cp "$NDSI_FILE" dsi_video_app.ndsi
+            echo "Copied $NDSI_FILE → dsi_video_app.ndsi"
+          fi
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: dsi-video-app
+          # FIX 4: path espliciti con glob corretti; se ndsi non esiste
+          # upload-artifact@v4 lo ignora senza errore grazie a if-no-files-found.
           path: |
-            *.nds
-            *.ndsi
+            dsi_video_app.nds
+            dsi_video_app.ndsi
+          if-no-files-found: warn
