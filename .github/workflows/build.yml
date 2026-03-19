@@ -19,7 +19,11 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Installa nds-dev
-        run: dkp-pacman -Sy --noconfirm nds-dev
+        run: |
+          dkp-pacman -Rdd --noconfirm libfilesystem 2>/dev/null || true
+          dkp-pacman -Sy --noconfirm --needed \
+            devkitARM libnds default-arm7 ndstool \
+            dswifi libfat-nds maxmod-nds grit mmutil
 
       - name: Compila
         run: |
