@@ -1,0 +1,37 @@
+name: Build Nintendo DSi App
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    name: Build via devkitARM
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare Makefile
+        run: |
+          # We use the standard DSi camera example Makefile which has the correct camera libs
+          # If it doesn't exist, we fallback to the default arm9 template.
+          if [ -f /opt/devkitpro/examples/nds/camera/camera_capture/Makefile ]; then
+            cp /opt/devkitpro/examples/nds/camera/camera_capture/Makefile ./Makefile
+          else
+            cp /opt/devkitpro/examples/nds/templates/arm9/Makefile ./Makefile
+          fi
+          
+          # Rename the target output
+          sed -i 's/TARGET		:=	$(notdir $(CURDIR))/TARGET := dsi_video_app/' Makefile || true
+
+      - name: Compile
+        run: make
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dsi-video-app
+          path: |
+            *.nds
+            *.ndsi
