@@ -1,7 +1,5 @@
 name: Build Nintendo DSi App
-
 on: [push, pull_request, workflow_dispatch]
-
 jobs:
   build:
     name: Build via devkitARM
@@ -12,33 +10,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Prepare Makefile
+      - name: Fetch Camera Template
         run: |
-          # We use the standard DSi camera example Makefile which has the correct camera libs
-          # If it doesn't exist, we fallback to the default arm9 template.
-          if [ -f /opt/devkitpro/examples/nds/camera/camera_capture/Makefile ]; then
-            cp /opt/devkitpro/examples/nds/camera/camera_capture/Makefile ./Makefile
-          else
-            cp /opt/devkitpro/examples/nds/templates/arm9/Makefile ./Makefile
-          fi
-          
-          # Rename the target output
-          sed -i 's/TARGET		:=	$(notdir $(CURDIR))/TARGET := dsi_video_app/' Makefile || true
-
-      - name: Auto-fix camera header
-        run: |
-          # Find which header declares cameraInit
-          HEADER=$(grep -rl "cameraInit" /opt/devkitpro/libnds/include/ | grep "\.h$" | head -n 1)
-          if [ -n "$HEADER" ]; then
-            REL_PATH=$(echo "$HEADER" | sed 's|/opt/devkitpro/libnds/include/||')
-            echo "Found cameraInit in: $REL_PATH"
-            sed -i "s|nds/arm9/camera.h|$REL_PATH|g" source/main.c
-          else
-            echo "cameraInit not found in any standard header!"
-          fi
+          git clone https://github.com/Epicpkmn11/dsi-camera.git base_project
+          # Overwrite their template's main.c with our video recorder app
+          cp source/main.c base_project/arm9/source/main.c
 
       - name: Compile
-        run: make
+        run: |
+          cd base_project
+          make
+          cp dsi-camera.nds ../dsi_video_app.nds
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
