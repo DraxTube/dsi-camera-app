@@ -1,4 +1,5 @@
 #include <nds.h>
+#include <nds/arm9/camera.h>
 #include <stdio.h>
 #include <stdlib.h>
 
