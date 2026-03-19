@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitarm:20240202
+    env:
+      DEVKITPRO: /opt/devkitpro
+      DEVKITARM: /opt/devkitpro/devkitARM
+      PATH: /opt/devkitpro/devkitARM/bin:/opt/devkitpro/tools/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
     steps:
       - name: Checkout repository
@@ -27,7 +31,6 @@ jobs:
 
       - name: Compila
         run: |
-          source /etc/profile.d/devkit-env.sh
           arm-none-eabi-gcc --version
           make
 
